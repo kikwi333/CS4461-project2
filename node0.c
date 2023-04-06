@@ -40,7 +40,7 @@ void rtupdate9(struct RoutePacket *rcvdpkt) {}
 
 void rtinit0()
 {
-    // printf("node 0 initial time: %f\n", clocktime);
+    printf("node 0 initial time: %f\n", clocktime);
 
     // Get immediate neighbors' costs for node 0
     neighbor0 = getNeighborCosts(NODE0);
@@ -57,16 +57,18 @@ void rtinit0()
             if (i == NODE0)
                 dt0.costs[i][j] = neighbor0->NodeCosts[j];
             else if (j == NODE0)
-                
-            else
+                dt0.costs[i][j] = neighbor0->NodeCosts[i];
+            else if (i == j)
+                dt0.costs[i][j] = 0;
+            else 
                 dt0.costs[i][j] = INFINITY;
+
             printf("%i ", dt0.costs[i][j]);
         }
         printf("\n");
     }
 
     printdt0(NODE0, neighbor0, &dt0);
-
 }
 
 void rtupdate0(struct RoutePacket *rcvdpkt)
