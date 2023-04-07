@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include "dv.h"
 
-#define NODE0 0
-
 extern int TraceLevel;
 extern float clocktime;
 
@@ -40,7 +38,9 @@ void rtupdate9(struct RoutePacket *rcvdpkt) {}
 
 void rtinit0()
 {
-    printf("node 0 initial time: %f\n", clocktime);
+    //printf("node 0 initial time: %f\n", clocktime);
+    if (TraceLevel == 1)
+        printf("At time t=%.3f, rtinit0() called.\n", clocktime);
 
     // Get immediate neighbors' costs for node 0
     neighbor0 = getNeighborCosts(NODE0);
@@ -54,25 +54,73 @@ void rtinit0()
         for (int j = 0; j < MAX_NODES; j++)
         {
             // if in node 0's row, insert neighbor costs into table
-            if (i == NODE0)
+            // if (i == NODE0)
+            //     dt0.costs[i][j] = neighbor0->NodeCosts[j];
+            // else if (j == NODE0)
+            //     dt0.costs[i][j] = neighbor0->NodeCosts[i];
+            // else 
+            if (i == j)
+                // dt0.costs[i][j] = 0;
                 dt0.costs[i][j] = neighbor0->NodeCosts[j];
-            else if (j == NODE0)
-                dt0.costs[i][j] = neighbor0->NodeCosts[i];
-            else if (i == j)
-                dt0.costs[i][j] = 0;
             else 
                 dt0.costs[i][j] = INFINITY;
 
-            printf("%i ", dt0.costs[i][j]);
+            // printf("%i ", dt0.costs[i][j]);
         }
-        printf("\n");
+        // printf("\n");
     }
 
-    printdt0(NODE0, neighbor0, &dt0);
+    // Outputs node0 distance table if the trace level is 1
+    if (TraceLevel == 1)
+        printdt0(NODE0, neighbor0, &dt0);
+
+    // Print information sent to neighbor nodes
+    // Get neighbor node identities
+    // For loop to build and send packets
+    // Build the packet here
+    struct RoutePacket info_dt0;
+    info_dt0.sourceid = NODE0;
+    bool whichNodes[MAX_NODES];
+    
+    // Build arrays for determining neighbor nodes and minimal costs
+    for (int i = 0; i < MAX_NODES; i++)
+    {
+        info_dt0.mincost[i] = neighbor0->NodeCosts[i];
+        if (info_dt0.mincost[i] != INFINITY && info_dt0.mincost[i] > 0)
+            whichNodes[i] = true;
+        else
+            whichNodes[i] = false;
+    }
+
+    // Start sending packets to immediate neighbors
+    for (int node_num = 0; node_num < MAX_NODES; node_num++)
+    {
+        if (whichNodes[node_num] == true)
+        {
+            info_dt0.destid = node_num;
+            if (TraceLevel == 1) {
+                printf("At time t=%.3f, node %i sends packet to node %i with:\t", clocktime, info_dt0.sourceid, info_dt0.destid);
+                for (int i = 0; i < 4; i++)
+                {
+                    printf("%i ",info_dt0.mincost[i]);
+                }
+                printf("\n");
+            }
+            toLayer2(info_dt0);
+        } 
+    }
+    return;
 }
 
 void rtupdate0(struct RoutePacket *rcvdpkt)
 {
+    printf("Source ID: %i\nDest ID: %i\n", rcvdpkt->sourceid, rcvdpkt->destid);
+    for (int i = 0; i < MAX_NODES; i++)
+    {
+        printf("%i ",rcvdpkt->mincost[i]);
+    }
+    printf("\n");
+    return;
 }
 
 /////////////////////////////////////////////////////////////////////

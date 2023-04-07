@@ -36,6 +36,13 @@ struct RoutePacket
 #define NO 0
 #define INFINITY 9999
 
+#define NODE0 0
+#define NODE1 1
+#define NODE2 2
+#define NODE3 3
+
+#include <stdbool.h>
+
 #define MAX_FILENAME_LENGTH 80
 
 // Prototype so all nodes can see the routine in project3.c
