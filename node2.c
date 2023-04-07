@@ -78,12 +78,15 @@ void rtinit2()
 
 void rtupdate2(struct RoutePacket *rcvdpkt)
 {
+    if (TraceLevel == 1)
+        printf("At time t=%.3f, rtupdate2() called.\n", clocktime);
+
     printf("Source ID: %i\nDest ID: %i\n", rcvdpkt->sourceid, rcvdpkt->destid);
     for (int i = 0; i < MAX_NODES; i++)
     {
         printf("%i ",rcvdpkt->mincost[i]);
     }
-    printf("\n");
+    printf("\n\n");
     return;
 }
 
