@@ -38,7 +38,7 @@ void rtupdate9(struct RoutePacket *rcvdpkt) {}
 
 void rtinit0()
 {
-    //printf("node 0 initial time: %f\n", clocktime);
+    // printf("node 0 initial time: %f\n", clocktime);
     if (TraceLevel == 1)
         printf("At time t=%.3f, rtinit0() called.\n", clocktime);
 
@@ -58,11 +58,11 @@ void rtinit0()
             //     dt0.costs[i][j] = neighbor0->NodeCosts[j];
             // else if (j == NODE0)
             //     dt0.costs[i][j] = neighbor0->NodeCosts[i];
-            // else 
+            // else
             if (i == j)
                 // dt0.costs[i][j] = 0;
                 dt0.costs[i][j] = neighbor0->NodeCosts[j];
-            else 
+            else
                 dt0.costs[i][j] = INFINITY;
 
             // printf("%i ", dt0.costs[i][j]);
@@ -81,7 +81,7 @@ void rtinit0()
     struct RoutePacket info_dt0;
     info_dt0.sourceid = NODE0;
     bool whichNodes[MAX_NODES];
-    
+
     // Build arrays for determining neighbor nodes and minimal costs
     for (int i = 0; i < MAX_NODES; i++)
     {
@@ -98,16 +98,17 @@ void rtinit0()
         if (whichNodes[node_num] == true)
         {
             info_dt0.destid = node_num;
-            if (TraceLevel == 1) {
+            if (TraceLevel == 1)
+            {
                 printf("At time t=%.3f, node %i sends packet to node %i with:\t", clocktime, info_dt0.sourceid, info_dt0.destid);
                 for (int i = 0; i < 4; i++)
                 {
-                    printf("%i ",info_dt0.mincost[i]);
+                    printf("%i ", info_dt0.mincost[i]);
                 }
                 printf("\n");
             }
             toLayer2(info_dt0);
-        } 
+        }
     }
     return;
 }
@@ -115,17 +116,62 @@ void rtinit0()
 void rtupdate0(struct RoutePacket *rcvdpkt)
 {
     if (TraceLevel == 1)
+    {
         printf("At time t=%.3f, rtupdate0() called.\n", clocktime);
+        printf("Recieved a routing packet from node %i.\n", rcvdpkt->sourceid);
+    }
 
     printf("Source ID: %i\nDest ID: %i\n", rcvdpkt->sourceid, rcvdpkt->destid);
     for (int i = 0; i < MAX_NODES; i++)
     {
-        printf("%i ",rcvdpkt->mincost[i]);
+        printf("%i ", rcvdpkt->mincost[i]);
     }
     printf("\n\n");
 
+    // Use packet's source id to determine which row in destination table to check
+    // int checkRow = rcvdpkt->sourceid;
+    bool whichNodes[MAX_NODES];
 
-    
+    for (int i = 0; i < MAX_NODES; i++)
+    {
+        if (rcvdpkt->mincost[i] != INFINITY && rcvdpkt->mincost[i] != 0)
+            whichNodes[i] = true;
+        else
+            whichNodes[i] = false;
+    }
+
+    // Update distance table
+    int checkVal;
+    int shortPath;
+    for (int dest_node = 0; dest_node < MAX_NODES; dest_node++)
+    {
+        for (int via = 0; via < MAX_NODES; via++)
+        {
+            shortPath = minOfRow(dest_node); 
+            if (dest_node < via && whichNodes[via] == true) // Upper half of matrix
+            {
+                checkVal = dt0.costs[via][via] + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
+                if (checkVal < dt0.costs[dest_node][via])
+                    dt0.costs[dest_node][via] = checkVal;
+            }
+            else if (dest_node > via && whichNodes[dest_node] == true)
+            {
+                checkVal = dt0.costs[via][via] + rcvdpkt->mincost[dest_node] + rcvdpkt->mincost[via];
+                if (checkVal < dt0.costs[dest_node][via])
+                    dt0.costs[dest_node][via] = checkVal;
+            }
+            else
+            {
+                // Check dest_node row and see if there are min costs for diagonals
+                dt0.costs[dest_node][via] = minOfRow(dest_node);
+            }
+        }
+    }
+
+    printf("Updated table for node 0\n");
+
+    printdt0(NODE0, neighbor0, &dt0);
+
     return;
 }
 
@@ -185,3 +231,22 @@ void printdt0(int MyNodeNumber, struct NeighborCosts *neighbor,
     }
     printf("\n");
 } // End of printdt0
+
+/**
+ * @brief Get the minimum cost of a destination node in the distance table given a row/node number
+ *
+ * @param rowNum
+ * @return int
+ */
+int minOfRow(int rowNum)
+{
+    int min = INFINITY;
+
+    for (int i = 0; i < MAX_NODES; i++)
+    {
+        if (dt0.costs[rowNum][i] < min)
+            min = dt0.costs[rowNum][i];
+    }
+
+    return min;
+}
