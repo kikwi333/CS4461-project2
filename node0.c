@@ -12,8 +12,11 @@ struct distance_table
 struct distance_table dt0;
 struct NeighborCosts *neighbor0;
 
-void printdt0(int MyNodeNumber, struct NeighborCosts *neighbor,
-              struct distance_table *dtptr);
+bool neighborNodes[MAX_NODES];
+
+void printdt0(int MyNodeNumber, struct NeighborCosts *neighbor, struct distance_table *dtptr);
+int minOfRow0(int rowNum);
+void sendMessage0(struct RoutePacket packet);
 
 // Part of the assignment asks that you write node4.c and node5.c so that you
 // end up with a total of 6 nodes.  But your startoff code only has
@@ -40,7 +43,7 @@ void rtinit0()
 {
     // printf("node 0 initial time: %f\n", clocktime);
     if (TraceLevel == 1)
-        printf("At time t=%.3f, rtinit0() called.\n", clocktime);
+        printf("\nAt time t=%.3f, rtinit0() called.\n", clocktime);
 
     // Get immediate neighbors' costs for node 0
     neighbor0 = getNeighborCosts(NODE0);
@@ -80,36 +83,20 @@ void rtinit0()
     // Build the packet here
     struct RoutePacket info_dt0;
     info_dt0.sourceid = NODE0;
-    bool whichNodes[MAX_NODES];
+    //bool whichNodes[MAX_NODES];
 
     // Build arrays for determining neighbor nodes and minimal costs
     for (int i = 0; i < MAX_NODES; i++)
     {
         info_dt0.mincost[i] = neighbor0->NodeCosts[i];
         if (info_dt0.mincost[i] != INFINITY && info_dt0.mincost[i] > 0)
-            whichNodes[i] = true;
+            neighborNodes[i] = true;
         else
-            whichNodes[i] = false;
+            neighborNodes[i] = false;
     }
 
     // Start sending packets to immediate neighbors
-    for (int node_num = 0; node_num < MAX_NODES; node_num++)
-    {
-        if (whichNodes[node_num] == true)
-        {
-            info_dt0.destid = node_num;
-            if (TraceLevel == 1)
-            {
-                printf("At time t=%.3f, node %i sends packet to node %i with:\t", clocktime, info_dt0.sourceid, info_dt0.destid);
-                for (int i = 0; i < 4; i++)
-                {
-                    printf("%i ", info_dt0.mincost[i]);
-                }
-                printf("\n");
-            }
-            toLayer2(info_dt0);
-        }
-    }
+    sendMessage0(info_dt0);
     return;
 }
 
@@ -117,21 +104,20 @@ void rtupdate0(struct RoutePacket *rcvdpkt)
 {
     if (TraceLevel == 1)
     {
-        printf("At time t=%.3f, rtupdate0() called.\n", clocktime);
+        printf("\nAt time t=%.3f, rtupdate0() called.\n", clocktime);
         printf("Recieved a routing packet from node %i.\n", rcvdpkt->sourceid);
     }
 
-    printf("Source ID: %i\nDest ID: %i\n", rcvdpkt->sourceid, rcvdpkt->destid);
-    for (int i = 0; i < MAX_NODES; i++)
-    {
-        printf("%i ", rcvdpkt->mincost[i]);
-    }
-    printf("\n\n");
+    //printf("Source ID: %i\nDest ID: %i\n", rcvdpkt->sourceid, rcvdpkt->destid);
+    //for (int i = 0; i < MAX_NODES; i++)
+    //{
+    //    printf("%i ", rcvdpkt->mincost[i]);
+    //}
+    //printf("\n\n");
 
-    // Use packet's source id to determine which row in destination table to check
-    // int checkRow = rcvdpkt->sourceid;
+    // Determines which nodes must be updated
+    // This may need to be changed!!!! Since we want ALL the nodes to update when sent packets
     bool whichNodes[MAX_NODES];
-
     for (int i = 0; i < MAX_NODES; i++)
     {
         if (rcvdpkt->mincost[i] != INFINITY && rcvdpkt->mincost[i] != 0)
@@ -143,35 +129,55 @@ void rtupdate0(struct RoutePacket *rcvdpkt)
     // Update distance table
     int checkVal;
     int shortPath;
+    bool wasChanged = false;
     for (int dest_node = 0; dest_node < MAX_NODES; dest_node++)
     {
         for (int via = 0; via < MAX_NODES; via++)
         {
-            shortPath = minOfRow(dest_node); 
-            if (dest_node < via && whichNodes[via] == true) // Upper half of matrix
+            //shortPath = minOfRow(via); 
+            shortPath = minOfRow0(dest_node);
+            checkVal = dt0.costs[via][via] + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
+            //if (rcvdpkt->sourceid != via || (via > dest_node && rcvdpkt->sourceid != (via - 1)))
+            //{
+            //    checkVal = checkVal + rcvdpkt->mincost[dest_node];
+            //}
+            if (dest_node != via && whichNodes[via] == true || whichNodes[dest_node] == true)
             {
-                checkVal = dt0.costs[via][via] + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
+                //checkVal = shortPath + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
                 if (checkVal < dt0.costs[dest_node][via])
                     dt0.costs[dest_node][via] = checkVal;
             }
-            else if (dest_node > via && whichNodes[dest_node] == true)
+            else if (dest_node == via && dest_node != NODE0 & dest_node < 4)
             {
-                checkVal = dt0.costs[via][via] + rcvdpkt->mincost[dest_node] + rcvdpkt->mincost[via];
-                if (checkVal < dt0.costs[dest_node][via])
-                    dt0.costs[dest_node][via] = checkVal;
-            }
-            else
-            {
-                // Check dest_node row and see if there are min costs for diagonals
-                dt0.costs[dest_node][via] = minOfRow(dest_node);
+                // Update node's minimal costs if there is a shorter path
+                if (shortPath < dt0.costs[dest_node][via])
+                {
+                    dt0.costs[dest_node][via] = shortPath;
+                    wasChanged = true;
+                }
             }
         }
     }
 
-    printf("Updated table for node 0\n");
+    if (TraceLevel == 1)
+    {
+        printf("Distance table for node 0:\n");
+        printdt0(NODE0, neighbor0, &dt0);
+    }
 
-    printdt0(NODE0, neighbor0, &dt0);
+    // If minimal cost in distance table was updated, send a packet
+    struct RoutePacket info_dt0;
+    if (wasChanged == true)
+    {
+        // Build array for determining updated minimal costs
+        for (int i = 0; i < MAX_NODES; i++)
+        {
+            info_dt0.mincost[i] = dt0.costs[i][i];
+        }
 
+        info_dt0.sourceid = NODE0;
+        sendMessage0(info_dt0);
+    }
     return;
 }
 
@@ -234,11 +240,10 @@ void printdt0(int MyNodeNumber, struct NeighborCosts *neighbor,
 
 /**
  * @brief Get the minimum cost of a destination node in the distance table given a row/node number
- *
  * @param rowNum
  * @return int
  */
-int minOfRow(int rowNum)
+int minOfRow0(int rowNum)
 {
     int min = INFINITY;
 
@@ -249,4 +254,30 @@ int minOfRow(int rowNum)
     }
 
     return min;
+}
+
+/**
+ * @brief Takes an initialized routing packet and sets its destination before sending it
+ * @param packet
+ * @return void
+ */
+void sendMessage0(struct RoutePacket packet)
+{
+    for (int node_num = 0; node_num < MAX_NODES; node_num++)
+    {
+        if (neighborNodes[node_num] == true)
+        {
+            packet.destid = node_num;
+            if (TraceLevel == 1)
+            {
+                printf("At time t=%.3f, node %i sends packet to node %i with:\t", clocktime, packet.sourceid, packet.destid);
+                for (int i = 0; i < 4; i++)
+                {
+                    printf("%i ", packet.mincost[i]);
+                }
+                printf("\n");
+            }
+            toLayer2(packet);
+        }
+    }
 }
