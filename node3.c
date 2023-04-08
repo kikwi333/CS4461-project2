@@ -67,14 +67,72 @@ void rtinit3()
 void rtupdate3(struct RoutePacket *rcvdpkt)
 {
     if (TraceLevel == 1)
-        printf("At time t=%.3f, rtupdate3() called.\n", clocktime);
+    {
+        printf("\nAt time t=%.3f, rtupdate3() called.\n", clocktime);
+        printf("Recieved a routing packet from node %i.\n", rcvdpkt->sourceid);
+    }
 
-    printf("Source ID: %i\nDest ID: %i\n", rcvdpkt->sourceid, rcvdpkt->destid);
+    // Determines which nodes must be updated
+    // This may need to be changed!!!! Since we want ALL the nodes to update when sent packets
+    bool whichNodes[MAX_NODES];
     for (int i = 0; i < MAX_NODES; i++)
     {
-        printf("%i ",rcvdpkt->mincost[i]);
+        if (rcvdpkt->mincost[i] != INFINITY && rcvdpkt->mincost[i] != 0)
+            whichNodes[i] = true;
+        else
+            whichNodes[i] = false;
     }
-    printf("\n\n");
+
+    // Update distance table
+    int checkVal;
+    int shortPath;
+    bool wasChanged = false;
+    for (int dest_node = 0; dest_node < MAX_NODES; dest_node++)
+    {
+        for (int via = 0; via < MAX_NODES; via++)
+        {
+            shortPath = minOfRow3(dest_node);
+            checkVal = dt3.costs[via][via] + rcvdpkt->mincost[via]; // + rcvdpkt->mincost[dest_node];
+            if (rcvdpkt->mincost[dest_node] == 0 || rcvdpkt->mincost[dest_node] == INFINITY)
+                checkVal = checkVal + neighbor3->NodeCosts[via];
+            else
+                checkVal = checkVal + rcvdpkt->mincost[dest_node];
+            
+            if (dest_node != via && whichNodes[via] == true || whichNodes[dest_node] == true)
+            {
+                if (checkVal < dt3.costs[dest_node][via])
+                    dt3.costs[dest_node][via] = checkVal;
+            }
+            else if (dest_node == via && dest_node != NODE1 & dest_node < 4)
+            {
+                if (shortPath < dt3.costs[dest_node][via])
+                {
+                    dt3.costs[dest_node][via] = shortPath;
+                    wasChanged = true;
+                }
+            }
+        }
+    }
+
+    if (TraceLevel == 1)
+    {
+        printf("Distance table for node 3:\n");
+        printdt3(NODE3, neighbor3, &dt3);
+    }
+
+    // If minimal cost in distance table was updated, send a packet
+    struct RoutePacket info_dt3;
+    if (wasChanged == true)
+    {
+        // Build array for determining updated minimal costs
+        for (int i = 0; i < MAX_NODES; i++)
+        {
+            info_dt3.mincost[i] = dt3.costs[i][i];
+        }
+
+        info_dt3.sourceid = NODE3;
+        sendMessage3(info_dt3);
+    }
     return;
 }
 

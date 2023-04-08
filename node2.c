@@ -72,63 +72,64 @@ void rtupdate2(struct RoutePacket *rcvdpkt)
         printf("Recieved a routing packet from node %i.\n", rcvdpkt->sourceid);
     }
 
-    // // Determines which nodes must be updated
-    // // This may need to be changed!!!! Since we want ALL the nodes to update when sent packets
-    // bool whichNodes[MAX_NODES];
-    // for (int i = 0; i < MAX_NODES; i++)
-    // {
-    //     if (rcvdpkt->mincost[i] != INFINITY && rcvdpkt->mincost[i] != 0)
-    //         whichNodes[i] = true;
-    //     else
-    //         whichNodes[i] = false;
-    // }
+    bool whichNodes[MAX_NODES];
+    for (int i = 0; i < MAX_NODES; i++)
+    {
+        if (rcvdpkt->mincost[i] != INFINITY && rcvdpkt->mincost[i] != 0)
+            whichNodes[i] = true;
+        else
+            whichNodes[i] = false;
+    }
 
-    // // Update distance table
-    // int checkVal;
-    // int shortPath;
-    // bool wasChanged = false;
-    // for (int dest_node = 0; dest_node < MAX_NODES; dest_node++)
-    // {
-    //     for (int via = 0; via < MAX_NODES; via++)
-    //     {
-    //         shortPath = minOfRow2(dest_node);
-    //         checkVal = dt2.costs[via][via] + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
-    //         if (dest_node != via && whichNodes[via] == true || whichNodes[dest_node] == true)
-    //         {
-    //             if (checkVal < dt2.costs[dest_node][via])
-    //                 dt2.costs[dest_node][via] = checkVal;
-    //         }
-    //         else if (dest_node == via && dest_node != NODE1 & dest_node < 4)
-    //         {
-    //             if (shortPath < dt2.costs[dest_node][via])
-    //             {
-    //                 dt2.costs[dest_node][via] = shortPath;
-    //                 wasChanged = true;
-    //             }
-    //         }
-    //     }
-    // }
+    // Update distance table
+    int checkVal;
+    int shortPath;
+    bool wasChanged = false;
+    for (int dest_node = 0; dest_node < MAX_NODES; dest_node++)
+    {
+        for (int via = 0; via < MAX_NODES; via++)
+        {
+            //shortPath = minOfRow(via); 
+            shortPath = minOfRow2(dest_node);
+            checkVal = neighbor2->NodeCosts[via] + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
+            if (dest_node != via && whichNodes[via] == true || whichNodes[dest_node] == true)
+            {
+                //checkVal = shortPath + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
+                if (checkVal < dt2.costs[dest_node][via])
+                    dt2.costs[dest_node][via] = checkVal;
+            }
+            else if (dest_node == via && dest_node != NODE0 & dest_node < 4)
+            {
+                // Update node's minimal costs if there is a shorter path
+                if (shortPath < dt2.costs[dest_node][via])
+                {
+                    dt2.costs[dest_node][via] = shortPath;
+                    wasChanged = true;
+                }
+            }
+        }
+    }
 
-    // if (TraceLevel == 1)
-    // {
-    //     printf("Distance table for node 2:\n");
-    //     printdt2(NODE2, neighbor2, &dt2);
-    // }
+    if (TraceLevel == 1)
+    {
+        printf("Distance table for node 2:\n");
+        printdt2(NODE2, neighbor2, &dt2);
+    }
 
-    // // If minimal cost in distance table was updated, send a packet
-    // struct RoutePacket info_dt2;
-    // if (wasChanged == true)
-    // {
-    //     // Build array for determining updated minimal costs
-    //     for (int i = 0; i < MAX_NODES; i++)
-    //     {
-    //         info_dt2.mincost[i] = dt2.costs[i][i];
-    //     }
+    // If minimal cost in distance table was updated, send a packet
+    struct RoutePacket info_dt2;
+    if (wasChanged == true)
+    {
+        // Build array for determining updated minimal costs
+        for (int i = 0; i < MAX_NODES; i++)
+        {
+            info_dt2.mincost[i] = dt2.costs[i][i];
+        }
 
-    //     info_dt2.sourceid = NODE2;
-    //     sendMessage2(info_dt2);
-    // }
-    // return;
+        info_dt2.sourceid = NODE2;
+        sendMessage2(info_dt2);
+    }
+    return;
 }
 
 /////////////////////////////////////////////////////////////////////

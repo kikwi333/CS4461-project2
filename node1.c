@@ -88,11 +88,12 @@ void rtupdate1(struct RoutePacket *rcvdpkt)
         for (int via = 0; via < MAX_NODES; via++)
         {
             shortPath = minOfRow1(dest_node);
-            checkVal = dt1.costs[via][via] + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
-            if ((dest_node > via && rcvdpkt->sourceid != via) || (dest_node < via && rcvdpkt->sourceid != dest_node))
-            {
-                checkVal = dt1.costs[dest_node][via];
-            }
+            checkVal = dt1.costs[via][via] + rcvdpkt->mincost[via]; // + rcvdpkt->mincost[dest_node];
+            if (rcvdpkt->mincost[dest_node] == 0 || rcvdpkt->mincost[dest_node] == INFINITY)
+                checkVal = checkVal + neighbor1->NodeCosts[via];
+            else
+                checkVal = checkVal + rcvdpkt->mincost[dest_node];
+
             if (dest_node != via && whichNodes[via] == true || whichNodes[dest_node] == true)
             {
                 if (checkVal < dt1.costs[dest_node][via])

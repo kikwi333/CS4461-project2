@@ -137,10 +137,6 @@ void rtupdate0(struct RoutePacket *rcvdpkt)
             //shortPath = minOfRow(via); 
             shortPath = minOfRow0(dest_node);
             checkVal = dt0.costs[via][via] + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
-            //if (rcvdpkt->sourceid != via || (via > dest_node && rcvdpkt->sourceid != (via - 1)))
-            //{
-            //    checkVal = checkVal + rcvdpkt->mincost[dest_node];
-            //}
             if (dest_node != via && whichNodes[via] == true || whichNodes[dest_node] == true)
             {
                 //checkVal = shortPath + rcvdpkt->mincost[via] + rcvdpkt->mincost[dest_node];
